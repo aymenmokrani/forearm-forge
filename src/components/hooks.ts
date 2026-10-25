@@ -39,23 +39,29 @@ export function useWakeLock(enabled: boolean) {
 
 let audioCtx: AudioContext | null = null;
 
-/** Short beep + vibration to signal the end of a hold or rest. */
+/** Timer finished: a rising three-note chime and three short vibrations. Web audio follows the silent switch on iOS. */
 export function signal() {
   try {
-    navigator.vibrate?.([180, 90, 180]);
+    navigator.vibrate?.([90, 70, 90, 70, 90]);
   } catch {
     /* ignore */
   }
   try {
     audioCtx ??= new AudioContext();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.frequency.value = 880;
-    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
-    osc.connect(gain).connect(audioCtx.destination);
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.35);
+    const t0 = audioCtx.currentTime;
+    [660, 880, 1175].forEach((freq, k) => {
+      const osc = audioCtx!.createOscillator();
+      const gain = audioCtx!.createGain();
+      const at = t0 + k * 0.13;
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.16, at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, at + 0.3);
+      osc.connect(gain).connect(audioCtx!.destination);
+      osc.start(at);
+      osc.stop(at + 0.32);
+    });
   } catch {
     /* audio unavailable */
   }

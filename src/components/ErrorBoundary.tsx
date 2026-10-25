@@ -50,29 +50,28 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
     if (!this.state.error) return this.props.children;
     return (
       <div className="app">
-        <main className="screen screen-pad-bottom">
-          <div className="empty">
-            <p className="empty-title">Something broke</p>
-            <div className="empty-body">
-              <p>ForearmForge hit an error it couldn't recover from. Your training data is still on this device.</p>
-              <button type="button" className="btn btn-primary btn-block" onClick={() => window.location.reload()}>
-                Try again
-              </button>
-              <button type="button" className="btn btn-ghost btn-block" onClick={this.download}>
-                Download my data
-              </button>
-              {this.state.confirmReset ? (
-                <button type="button" className="btn btn-danger btn-block" onClick={this.reset}>
-                  Yes, start fresh
-                </button>
-              ) : (
-                <button type="button" className="btn btn-danger-ghost btn-block" onClick={() => this.setState({ confirmReset: true })}>
-                  Start fresh…
-                </button>
-              )}
-              <p className="muted small">Starting fresh keeps a backup copy in this browser's storage.</p>
-            </div>
-          </div>
+        <header className="block">
+          <span className="eyebrow eyebrow-pink">Something broke</span>
+          <h1 className="title">ForearmForge hit an error it couldn't recover from.</h1>
+          <p className="muted small">Your training data is still on this device.</p>
+        </header>
+        <main className="content">
+          <button type="button" className="btn btn-primary btn-block" onClick={() => window.location.reload()}>
+            Try again
+          </button>
+          <button type="button" className="btn btn-secondary btn-block" onClick={this.download}>
+            Download my data
+          </button>
+          {this.state.confirmReset ? (
+            <button type="button" className="btn btn-safety btn-block" onClick={this.reset}>
+              Yes, start fresh
+            </button>
+          ) : (
+            <button type="button" className="btn btn-text btn-block" onClick={() => this.setState({ confirmReset: true })}>
+              Start fresh…
+            </button>
+          )}
+          <p className="faint tiny center">Starting fresh keeps a backup copy in this browser's storage.</p>
         </main>
       </div>
     );

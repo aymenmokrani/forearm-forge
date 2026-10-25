@@ -76,11 +76,21 @@ export interface Program {
   generatedAt: string;
 }
 
+export const GRIPPER_IDS = ['sport', 'trainer', 'p5', 'no1', 'no1.5', 'no2', 'no2.5', 'no3', 'no3.5', 'no4'] as const;
+export type GripperId = (typeof GRIPPER_IDS)[number];
+
+/** How a gripper set went: handles touched, nearly, or not at all. */
+export const CLOSES = ['full', 'almost', 'no'] as const;
+export type Close = (typeof CLOSES)[number];
+
 export interface LoggedSet {
   reps?: number;
   /** Always stored in kg. */
   weight?: number;
   seconds?: number;
+  /** Gripper sets only: which gripper and whether it closed. */
+  gripper?: GripperId;
+  close?: Close;
 }
 
 export interface SessionEntry {
@@ -110,6 +120,13 @@ export interface ActiveSession {
   cursor: number;
 }
 
+/** Forearm circumference, always in cm. */
+export interface Measurement {
+  at: string;
+  left: number;
+  right: number;
+}
+
 export interface AppData {
   schemaVersion: 1;
   profile: Profile | null;
@@ -118,4 +135,7 @@ export interface AppData {
   active: ActiveSession | null;
   units: Units;
   disclaimerAccepted: boolean;
+  measurements: Measurement[];
+  /** Day ("YYYY-MM-DD", local) the forearm prompt was dismissed with "Not today". */
+  measureSkippedOn?: string;
 }

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
-export type Tab = 'today' | 'plan' | 'library' | 'history' | 'me';
+export type Tab = 'today' | 'plan' | 'library' | 'progress' | 'me';
 
 export type Route =
   | { name: 'tab'; tab: Tab }
@@ -9,6 +9,7 @@ export type Route =
   | { name: 'summary'; id: string }
   | { name: 'exercise'; id: string }
   | { name: 'session'; id: string }
+  | { name: 'ladder' }
   | { name: 'setup' };
 
 interface NavValue {

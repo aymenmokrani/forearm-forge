@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Icon } from './Icon';
+import { Icon, type IconName } from './Icon';
 
 export function Stepper({
   label,
@@ -28,7 +28,7 @@ export function Stepper({
     <div className="stepper">
       <span className="stepper-label">{label}</span>
       <div className="stepper-row">
-        <button type="button" className="stepper-btn" aria-label={`Decrease ${label}`} onClick={() => onChange(clamp(value - step))}>
+        <button type="button" className="round-btn" aria-label={`Decrease ${label}`} onClick={() => onChange(clamp(value - step))}>
           <Icon name="minus" />
         </button>
         <label className="stepper-value">
@@ -47,7 +47,7 @@ export function Stepper({
           />
           {suffix && <span className="stepper-suffix">{suffix}</span>}
         </label>
-        <button type="button" className="stepper-btn" aria-label={`Increase ${label}`} onClick={() => onChange(clamp(value + step))}>
+        <button type="button" className="round-btn" aria-label={`Increase ${label}`} onClick={() => onChange(clamp(value + step))}>
           <Icon name="plus" />
         </button>
       </div>
@@ -122,31 +122,74 @@ export function Modal({
   );
 }
 
-export function TopBar({ title, onBack, right }: { title: string; onBack?: () => void; right?: ReactNode }) {
+export function RoundButton({ icon, label, onClick, disabled }: { icon: IconName; label: string; onClick: () => void; disabled?: boolean }) {
   return (
-    <header className="topbar">
-      {onBack ? (
-        <button type="button" className="icon-btn" onClick={onBack} aria-label="Back">
-          <Icon name="left" />
-        </button>
-      ) : (
-        <span className="topbar-spacer" />
-      )}
-      <h1 className="topbar-title">{title}</h1>
-      {right ?? <span className="topbar-spacer" />}
-    </header>
+    <button type="button" className="round-btn" aria-label={label} onClick={onClick} disabled={disabled}>
+      <Icon name={icon} />
+    </button>
   );
 }
 
-export function Chip({ children, tone }: { children: ReactNode; tone?: 'accent' | 'teal' | 'gold' }) {
-  return <span className={`chip ${tone ? `chip-${tone}` : ''}`}>{children}</span>;
+/** The carved top block: lighter than the page, big bottom-right corner, coral glow top-right. */
+export function Block({ children, tall }: { children: ReactNode; tall?: boolean }) {
+  return <header className={`block ${tall ? 'block-tall' : ''}`}>{children}</header>;
+}
+
+/** The one huge number of a screen, with its label beside it. */
+export function Huge({
+  value,
+  label,
+  sub,
+  size,
+  gold,
+}: {
+  value: ReactNode;
+  label?: ReactNode;
+  sub?: ReactNode;
+  size?: number;
+  gold?: boolean;
+}) {
+  return (
+    <div className="huge">
+      <span className={`huge-num ${gold ? 'huge-num-gold' : ''}`} style={size ? { fontSize: size } : undefined}>
+        {value}
+      </span>
+      {(label || sub) && (
+        <span className="huge-text">
+          {label && <span className="huge-label">{label}</span>}
+          {sub && <span className="huge-sub">{sub}</span>}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Segmented progress: `filled` of `total` bars. */
+export function Bars({ filled, total, tone = 'coral', label, pips }: { filled: number; total: number; tone?: 'coral' | 'peri'; label: string; pips?: boolean }) {
+  return (
+    <div className={`bars ${pips ? 'pips' : ''}`} role="img" aria-label={label}>
+      {Array.from({ length: total }, (_, k) => (
+        <span key={k} className={k < filled ? `bar-${tone}` : ''} />
+      ))}
+    </div>
+  );
+}
+
+export function StepDots({ index, count }: { index: number; count: number }) {
+  return (
+    <div className="steps-dots" role="progressbar" aria-label="Setup progress" aria-valuemin={1} aria-valuemax={count} aria-valuenow={index + 1}>
+      {Array.from({ length: count }, (_, k) => (
+        <span key={k} className={`${k <= index ? 'dot-on' : ''} ${k === index ? 'dot-now' : ''}`} />
+      ))}
+    </div>
+  );
 }
 
 export function Empty({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="empty">
-      <p className="empty-title">{title}</p>
-      {children && <div className="empty-body">{children}</div>}
-    </div>
+    <section className="card empty">
+      <h2 className="card-title">{title}</h2>
+      {children}
+    </section>
   );
 }

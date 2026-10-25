@@ -1,12 +1,12 @@
 import { useRef, useState } from 'react';
-import { EquipGlyph, Icon } from '../components/Icon';
-import { Modal } from '../components/ui';
+import { Block, Huge, Modal } from '../components/ui';
 import { EQUIPMENT_LABEL } from '../domain/exercises';
 import { EXPERIENCE_LABEL, GOAL_RULES, SAFETY_FLAGS } from '../domain/goals';
 import { defaultData, parseData } from '../domain/storage';
 import type { AppData } from '../domain/types';
 import { useNav } from '../state/nav';
 import { useStore } from '../state/store';
+import { plural } from './common';
 
 export function Me() {
   const { data, update } = useStore();
@@ -38,91 +38,98 @@ export function Me() {
 
   return (
     <>
-      <header className="page-head">
-        <h1 className="display-sm">Me</h1>
-      </header>
-
-      <section className="card">
-        <div className="row-between">
-          <h2 className="label">Training setup</h2>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => nav.go({ name: 'setup' })}>
-            <Icon name="edit" size={16} /> Edit
+      <Block>
+        <div className="row-between" style={{ alignItems: 'flex-start' }}>
+          <div className="row-text">
+            <span className="eyebrow">Your training</span>
+            <h1 className="title" style={{ fontSize: 26 }}>
+              {GOAL_RULES[profile.goal].label}
+            </h1>
+          </div>
+          <button type="button" className="btn btn-secondary" onClick={() => nav.go({ name: 'setup' })}>
+            Edit
           </button>
         </div>
-        <dl className="kv">
-          <dt>Goal</dt>
-          <dd>{GOAL_RULES[profile.goal].label}</dd>
-          <dt>Experience</dt>
-          <dd>{EXPERIENCE_LABEL[profile.experience]}</dd>
-          <dt>Days / week</dt>
-          <dd>{profile.daysPerWeek}</dd>
-        </dl>
-        <ul className="equip-inline">
-          {profile.equipment.map((e) => (
-            <li key={e}>
-              <EquipGlyph equipment={e} size={20} /> {EQUIPMENT_LABEL[e]}
-            </li>
-          ))}
-        </ul>
-      </section>
+        <Huge value={`${profile.daysPerWeek}×`} label="a week" sub={EXPERIENCE_LABEL[profile.experience]} />
+      </Block>
 
-      <section className="card">
-        <h2 className="label">Units</h2>
-        <div className="segmented" role="radiogroup" aria-label="Weight units">
-          {(['kg', 'lb'] as const).map((u) => (
-            <button
-              key={u}
-              type="button"
-              role="radio"
-              aria-checked={data.units === u}
-              className={data.units === u ? 'seg-on' : ''}
-              onClick={() => update((d) => ({ ...d, units: u }))}
-            >
-              {u}
+      <main className="content">
+        <section className="card">
+          <div className="row-between">
+            <h2 className="card-title">Your kit</h2>
+            <button type="button" className="btn btn-text soft-coral" onClick={() => nav.go({ name: 'setup' })}>
+              Edit kit
             </button>
-          ))}
-        </div>
-      </section>
+          </div>
+          <ul className="tags">
+            {profile.equipment.map((e) => (
+              <li key={e} className="tag" style={{ color: 'var(--ice)', fontSize: 14, padding: '8px 14px' }}>
+                {e === 'bodyweight' ? 'Bodyweight' : EQUIPMENT_LABEL[e]}
+              </li>
+            ))}
+          </ul>
+        </section>
 
-      <section className="card">
-        <h2 className="label">Your data</h2>
-        <p className="muted small">Everything stays on this device. Export a backup now and then.</p>
-        <div className="stack-sm">
-          <button type="button" className="btn btn-ghost btn-block" onClick={exportData}>
-            <Icon name="download" size={18} /> Export backup
-          </button>
-          <button type="button" className="btn btn-ghost btn-block" onClick={() => fileRef.current?.click()}>
-            <Icon name="upload" size={18} /> Import backup
-          </button>
+        <section className="card" style={{ padding: '10px 12px 10px 18px' }}>
+          <div className="row-between">
+            <h2 className="card-title">Units</h2>
+            <div className="seg" role="radiogroup" aria-label="Weight units">
+              {(['kg', 'lb'] as const).map((u) => (
+                <button
+                  key={u}
+                  type="button"
+                  role="radio"
+                  aria-checked={data.units === u}
+                  className={data.units === u ? 'seg-on' : ''}
+                  onClick={() => update((d) => ({ ...d, units: u }))}
+                >
+                  {u}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="card">
+          <div className="row-text">
+            <h2 className="card-title">Your data</h2>
+            <p className="muted tiny">Everything stays on this device. Export a backup now and then.</p>
+          </div>
+          <div className="btn-pair">
+            <button type="button" className="btn btn-secondary" onClick={exportData}>
+              Export backup
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={() => fileRef.current?.click()}>
+              Import backup
+            </button>
+          </div>
           <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => void onFile(e.target.files?.[0])} />
           {importError && (
             <p className="error" role="alert">
               {importError}
             </p>
           )}
-          <button type="button" className="btn btn-danger-ghost btn-block" onClick={() => setConfirmReset(true)}>
-            <Icon name="trash" size={18} /> Reset everything
+          <button type="button" className="btn btn-safety btn-block" onClick={() => setConfirmReset(true)}>
+            Reset everything
           </button>
-        </div>
-      </section>
+        </section>
 
-      <section className="card safety-card">
-        <h2 className="card-title">
-          <Icon name="alert" size={18} /> Train safe
-        </h2>
-        <p>
-          Tendons adapt slower than muscle: add load gradually (about 10% a week at most) and leave 48 h between hard grip
-          days. Stop and see a professional for:
-        </p>
-        <ul className="flags">
-          {SAFETY_FLAGS.map((f) => (
-            <li key={f}>{f}</li>
-          ))}
-        </ul>
-        <p className="muted small">ForearmForge gives general information, not medical advice.</p>
-      </section>
+        <section className="card card-quiet">
+          <span className="eyebrow eyebrow-pink">Train safe</span>
+          <p className="muted small">
+            Tendons adapt slower than muscle. Add load gradually, about 10% a week at most, and leave 48 h between hard grip days. Stop and
+            see a professional for:
+          </p>
+          <ul className="flags">
+            {SAFETY_FLAGS.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+          <p className="faint tiny">ForearmForge gives general information, not medical advice.</p>
+        </section>
 
-      <p className="muted small center">ForearmForge v0.1 · works offline</p>
+        <p className="faint tiny center">ForearmForge v2 · works offline</p>
+      </main>
 
       {pendingImport && (
         <Modal
@@ -130,12 +137,12 @@ export function Me() {
           onClose={() => setPendingImport(null)}
           actions={
             <>
-              <button type="button" className="btn btn-ghost" onClick={() => setPendingImport(null)}>
+              <button type="button" className="btn btn-secondary" onClick={() => setPendingImport(null)}>
                 Cancel
               </button>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-primary btn-sm-primary"
                 onClick={() => {
                   update(() => pendingImport);
                   setPendingImport(null);
@@ -146,8 +153,8 @@ export function Me() {
             </>
           }
         >
-          The backup has {pendingImport.sessions.length} workouts. It replaces everything on this device, including{' '}
-          {data.sessions.length} current workouts.
+          The backup has {plural(pendingImport.sessions.length, 'workout')}. It replaces everything on this device, including{' '}
+          {plural(data.sessions.length, 'current workout')}.
         </Modal>
       )}
 
@@ -158,12 +165,12 @@ export function Me() {
           onClose={() => setConfirmReset(false)}
           actions={
             <>
-              <button type="button" className="btn btn-ghost" onClick={() => setConfirmReset(false)}>
+              <button type="button" className="btn btn-secondary" onClick={() => setConfirmReset(false)}>
                 Cancel
               </button>
               <button
                 type="button"
-                className="btn btn-danger"
+                className="btn btn-safety"
                 onClick={() => {
                   update(() => defaultData());
                   nav.tab('today');
@@ -174,7 +181,7 @@ export function Me() {
             </>
           }
         >
-          Deletes your plan and all {data.sessions.length} workouts from this device. Export a backup first if you might want them.
+          Deletes your plan and all {plural(data.sessions.length, 'workout')} from this device. Export a backup first if you might want them.
         </Modal>
       )}
     </>

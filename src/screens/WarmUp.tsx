@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { signal, useNow, useWakeLock } from '../components/hooks';
 import { Icon } from '../components/Icon';
-import { Ring } from '../components/Ring';
-import { TopBar } from '../components/ui';
+import { Block, Huge, RoundButton } from '../components/ui';
 import { nextDayIndex } from '../domain/generator';
 import { WARM_UP } from '../domain/goals';
 import { useNav } from '../state/nav';
@@ -30,52 +29,71 @@ export function WarmUp() {
   }, [now, endAt, step]);
 
   const startWorkout = () => begin(data.program ? nextDayIndex(data.program, data.sessions) : 0, 'replace');
+  const left = current ? (endAt ? Math.max(0, Math.ceil((endAt - now) / 1000)) : current.seconds) : 0;
 
   return (
     <div className="app">
-      <TopBar title="Warm-up" onBack={nav.back} />
-      <main className="screen screen-pad-bottom">
+      <Block tall>
+        <div className="row-between">
+          <RoundButton icon="back" label="Back" onClick={nav.back} />
+          <span className="muted small">{finished ? 'Warm-up done' : `Step ${step + 1} of ${WARM_UP.length}`}</span>
+          <span style={{ width: 44 }} />
+        </div>
         {!finished && current ? (
-          <section className="warm-now">
-            <p className="eyebrow">
-              Step {step + 1} of {WARM_UP.length}
-            </p>
-            <Ring progress={endAt ? 1 - (endAt - now) / (current.seconds * 1000) : 0} tone="teal">
-              <span className="ring-big">{endAt ? Math.max(0, Math.ceil((endAt - now) / 1000)) : current.seconds}</span>
-              <span className="muted small">seconds</span>
-            </Ring>
-            <h1 className="player-name center">{current.name}</h1>
-            <p className="cue center">{current.cue}</p>
-            {endAt === null ? (
-              <button type="button" className="btn btn-primary btn-block btn-lg" onClick={() => setEndAt(Date.now() + current.seconds * 1000)}>
-                <Icon name="play" size={20} /> {step === 0 ? 'Start warm-up' : 'Continue'}
-              </button>
-            ) : (
-              <button type="button" className="btn btn-ghost btn-block" onClick={() => setEndAt(Date.now())}>
-                Next step
-              </button>
-            )}
-          </section>
+          <>
+            <div className="row-text">
+              <span className="eyebrow">Warm-up</span>
+              <h1 className="title">{current.name}</h1>
+            </div>
+            <Huge value={left} label="seconds" sub={current.cue} size={120} />
+            <div className="meter" aria-hidden="true">
+              <span style={{ width: `${endAt ? Math.min(100, (1 - (endAt - now) / (current.seconds * 1000)) * 100) : 0}%` }} />
+            </div>
+          </>
         ) : (
-          <section className="warm-now">
-            <p className="eyebrow eyebrow-teal">Warmed up</p>
-            <h1 className="display-sm center">Ready to work.</h1>
-            <p className="muted center">Do 1-2 easy ramp-up sets at ~50% before your first loaded exercise.</p>
-          </section>
+          <>
+            <div className="row-text">
+              <span className="eyebrow">Warmed up</span>
+              <h1 className="title">Ready to work.</h1>
+            </div>
+            <Huge value={WARM_UP.length} label="moves done" sub="Do 1-2 easy ramp-up sets at about 50% before your first loaded exercise." />
+          </>
         )}
+      </Block>
 
-        <ol className="warm-list">
+      <main className="content">
+        <section className="card" style={{ padding: '6px 18px', gap: 0 }}>
           {WARM_UP.map((w, k) => (
-            <li key={w.name} className={k < step ? 'warm-done' : k === step ? 'warm-current' : ''}>
-              <span>{w.name}</span>
-              <span className="mono">{w.seconds}s</span>
-            </li>
+            <div key={w.name} className="list-row">
+              <span className={`small ${k === step ? 'soft-coral' : k < step ? '' : 'muted'}`} style={{ fontWeight: k === step ? 600 : 400 }}>
+                {w.name}
+              </span>
+              {k < step ? (
+                <span className="mint" aria-label="Done">
+                  <Icon name="check" size={18} />
+                </span>
+              ) : (
+                <span className="muted tiny num">{w.seconds} s</span>
+              )}
+            </div>
           ))}
-        </ol>
+        </section>
 
-        <button type="button" className={`btn btn-block ${finished ? 'btn-primary btn-lg' : 'btn-ghost'}`} onClick={startWorkout}>
-          {finished ? 'Start workout' : 'Skip to workout'} <Icon name="right" size={18} />
-        </button>
+        <div className="stack push-down">
+          {!finished && current && endAt === null && (
+            <button type="button" className="btn btn-primary btn-block" onClick={() => setEndAt(Date.now() + current.seconds * 1000)}>
+              {step === 0 ? 'Start warm-up' : 'Continue'}
+            </button>
+          )}
+          {!finished && endAt !== null && (
+            <button type="button" className="btn btn-secondary btn-block" onClick={() => setEndAt(Date.now())}>
+              Next move
+            </button>
+          )}
+          <button type="button" className={`btn btn-block ${finished ? 'btn-primary' : 'btn-text'}`} onClick={startWorkout}>
+            {finished ? 'Start workout' : 'Skip to workout'}
+          </button>
+        </div>
       </main>
     </div>
   );

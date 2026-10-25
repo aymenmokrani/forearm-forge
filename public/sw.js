@@ -9,9 +9,9 @@
 // the worker's own scope tells us which.
 const BASE = new URL(self.registration.scope).pathname;
 const ASSETS = `${BASE}assets/`;
-const CACHE = 'ff-shell';
+const CACHE = 'ff-shell-v2';
 const SHELL = ['manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'].map((f) => BASE + f);
-const FONT_CSS = 'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap';
+const FONT_CSS = 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Outfit:wght@400;500;600&display=swap';
 
 const assetsIn = (html) =>
   [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1]).filter((p) => p.startsWith(ASSETS));
