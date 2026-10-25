@@ -1,12 +1,11 @@
-import { EquipGlyph, Icon } from '../components/Icon';
-import { Chip, Empty, TopBar } from '../components/ui';
+import { Block, Empty, Huge, RoundButton } from '../components/ui';
 import { EQUIPMENT_LABEL, getExercise, isAvailable, TARGET_LABEL } from '../domain/exercises';
 import { computeBests } from '../domain/prs';
-import { formatSeconds, formatWeight } from '../domain/units';
+import { formatSeconds, toDisplay } from '../domain/units';
 import { useNav } from '../state/nav';
 import { useStore } from '../state/store';
 import { formatDate } from './common';
-import { describeSet } from './SessionView';
+import { entrySummary } from './SessionView';
 
 export function ExerciseDetail({ id }: { id: string }) {
   const { data } = useStore();
@@ -16,8 +15,10 @@ export function ExerciseDetail({ id }: { id: string }) {
   if (!ex) {
     return (
       <div className="app">
-        <TopBar title="Exercise" onBack={nav.back} />
-        <main className="screen">
+        <Block>
+          <RoundButton icon="back" label="Back" onClick={nav.back} />
+        </Block>
+        <main className="content">
           <Empty title="Exercise not found" />
         </main>
       </div>
@@ -30,84 +31,65 @@ export function ExerciseDetail({ id }: { id: string }) {
     .sort((a, b) => b.finishedAt.localeCompare(a.finishedAt))
     .flatMap((s) => {
       const entry = s.entries.find((e) => e.exerciseId === id);
-      return entry ? [{ session: s, sets: entry.sets }] : [];
+      return entry ? [{ session: s, entry }] : [];
     })
     .slice(0, 5);
 
+  const best =
+    bests?.maxWeight !== undefined
+      ? { value: toDisplay(bests.maxWeight, data.units), label: data.units, sub: 'your heaviest set' }
+      : bests?.maxSeconds !== undefined
+        ? { value: bests.maxSeconds, label: 'seconds', sub: 'your longest hold' }
+        : bests?.maxReps !== undefined
+          ? { value: bests.maxReps, label: 'reps', sub: 'your best set' }
+          : null;
+
   return (
     <div className="app">
-      <TopBar title="Exercise" onBack={nav.back} />
-      <main className="screen screen-pad-bottom">
-        <h1 className="display-sm">{ex.name}</h1>
-        <div className="chips">
-          <Chip tone="accent">{ex.type === 'hold' ? 'Timed hold' : 'Reps'}</Chip>
-          <Chip>Level {ex.difficulty} / 3</Chip>
-          {ex.targets.map((t) => (
-            <Chip key={t}>{TARGET_LABEL[t]}</Chip>
-          ))}
+      <Block>
+        <RoundButton icon="back" label="Back" onClick={nav.back} />
+        <div className="row-text">
+          <span className="eyebrow">{ex.type === 'hold' ? 'Timed hold' : 'Reps'} · level {ex.difficulty} of 3</span>
+          <h1 className="title">{ex.name}</h1>
         </div>
+        {best ? <Huge value={best.value} label={best.label} sub={best.sub} /> : <p className="muted small">Not logged yet. Your first session sets the baseline.</p>}
+      </Block>
 
+      <main className="content">
         <section className="card">
-          <h2 className="label">How to</h2>
-          <p className="cue-lg">{ex.cue}</p>
-        </section>
-
-        <section className="card">
-          <h2 className="label">Equipment</h2>
-          <ul className="equip-inline">
-            {ex.equipment.map((e) => (
-              <li key={e}>
-                <EquipGlyph equipment={e} size={22} /> {EQUIPMENT_LABEL[e]}
+          <span className="eyebrow eyebrow-fog">How to</span>
+          <p>{ex.cue}</p>
+          <ul className="tags">
+            {ex.targets.map((t) => (
+              <li key={t} className="tag">
+                {TARGET_LABEL[t]}
               </li>
             ))}
           </ul>
-          {!isAvailable(ex, owned) && (
-            <p className="note-inline">
-              <Icon name="alert" size={16} /> Not in your kit. Add the equipment in Me → Training setup to get it in your plan.
-            </p>
-          )}
         </section>
 
         <section className="card">
-          <h2 className="label">Your best</h2>
-          {bests ? (
-            <dl className="stats">
-              {bests.maxWeight !== undefined && (
-                <div>
-                  <dt>Heaviest</dt>
-                  <dd>{formatWeight(bests.maxWeight, data.units)}</dd>
-                </div>
-              )}
-              {bests.maxSeconds !== undefined && (
-                <div>
-                  <dt>Longest</dt>
-                  <dd>{formatSeconds(bests.maxSeconds)}</dd>
-                </div>
-              )}
-              {bests.maxReps !== undefined && (
-                <div>
-                  <dt>Most reps</dt>
-                  <dd>{bests.maxReps}</dd>
-                </div>
-              )}
-            </dl>
-          ) : (
-            <p className="muted">Not logged yet. Your first session sets the baseline.</p>
-          )}
+          <span className="eyebrow eyebrow-fog">Equipment</span>
+          <p>{ex.equipment.map((e) => (e === 'bodyweight' ? 'None' : EQUIPMENT_LABEL[e])).join(' + ')}</p>
+          {!isAvailable(ex, owned) && <p className="muted small">Not in your kit. Add it in Me, Edit kit, to get this in your plan.</p>}
         </section>
 
         {recent.length > 0 && (
-          <section className="card">
-            <h2 className="label">Recent</h2>
-            <ul className="recent">
-              {recent.map(({ session, sets }) => (
-                <li key={session.id}>
-                  <span>{formatDate(session.finishedAt)}</span>
-                  <span className="mono small">{sets.map((s) => describeSet(s, data.units)).join(', ')}</span>
-                </li>
-              ))}
-            </ul>
+          <section className="card" style={{ padding: '12px 18px', gap: 0 }}>
+            <span className="eyebrow eyebrow-fog" style={{ paddingBottom: 4 }}>
+              Recent
+            </span>
+            {recent.map(({ session, entry }) => (
+              <div key={session.id} className="list-row">
+                <span className="small">{formatDate(session.finishedAt)}</span>
+                <span className="muted tiny">{entrySummary(entry, data.units)}</span>
+              </div>
+            ))}
           </section>
+        )}
+
+        {bests?.maxSeconds !== undefined && bests.maxWeight !== undefined && (
+          <p className="muted tiny">Longest hold: {formatSeconds(bests.maxSeconds)}</p>
         )}
       </main>
     </div>

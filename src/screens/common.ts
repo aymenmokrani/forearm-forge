@@ -14,7 +14,11 @@ export function useBeginWorkout() {
   };
 }
 
-export const prescription = (p: PlannedExercise) => `${p.sets} × ${p.holdSec !== undefined ? `${p.holdSec}s` : p.reps}`;
+export const prescription = (p: PlannedExercise) => `${p.sets} × ${p.holdSec !== undefined ? `${p.holdSec} s` : p.reps}`;
+
+/** Rough length of a planned day in minutes, including rest. */
+export const dayMinutes = (exercises: PlannedExercise[]) =>
+  Math.round(exercises.reduce((t, p) => t + p.sets * ((p.holdSec ?? (p.reps ?? 10) * 3) + p.restSec), 0) / 60);
 
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
@@ -28,11 +32,4 @@ export function daysAgo(iso: string, now = new Date()): string {
   return `${diff} days ago`;
 }
 
-/** Monday-start dates of the current week. */
-export function currentWeek(now = new Date()): Date[] {
-  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
-  return Array.from({ length: 7 }, (_, i) => new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i));
-}
-
-export const sameDay = (a: Date, b: Date) =>
-  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;

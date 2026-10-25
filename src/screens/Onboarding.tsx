@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
-import { EquipGlyph, Icon } from '../components/Icon';
-import { Chip, Modal } from '../components/ui';
-import { EQUIPMENT_LABEL, getExercise } from '../domain/exercises';
+import { Icon } from '../components/Icon';
+import { Block, Huge, Modal, RoundButton, StepDots } from '../components/ui';
+import { EQUIPMENT_LABEL, EXERCISES, getExercise } from '../domain/exercises';
 import { availablePool, dayName, generateProgram } from '../domain/generator';
 import { EXPERIENCE_LABEL, GOAL_RULES, SAFETY_FLAGS } from '../domain/goals';
 import { EQUIPMENT, EXPERIENCE, GOALS, type Equipment, type Experience, type Goal, type Profile } from '../domain/types';
 import { useNav } from '../state/nav';
 import { useStore } from '../state/store';
+import { plural } from './common';
 
 const RECOMMENDED_DAYS: Record<Goal, number> = {
   strength: 3,
@@ -23,9 +24,7 @@ export function Onboarding({ mode }: { mode: 'first' | 'edit' }) {
   const nav = useNav();
   const existing = data.profile;
   const steps: Step[] =
-    mode === 'first' && !data.disclaimerAccepted
-      ? ['welcome', 'equipment', 'goal', 'details', 'preview']
-      : ['equipment', 'goal', 'details', 'preview'];
+    mode === 'first' && !data.disclaimerAccepted ? ['welcome', 'equipment', 'goal', 'details', 'preview'] : ['equipment', 'goal', 'details', 'preview'];
 
   const [step, setStep] = useState<Step>(steps[0]!);
   const [accepted, setAccepted] = useState(data.disclaimerAccepted);
@@ -38,13 +37,11 @@ export function Onboarding({ mode }: { mode: 'first' | 'edit' }) {
   const idx = steps.indexOf(step);
   const next = () => setStep(steps[Math.min(idx + 1, steps.length - 1)]!);
   const prev = () => (idx === 0 ? nav.back() : setStep(steps[idx - 1]!));
+  const canGoBack = idx > 0 || mode === 'edit';
 
   const createdAt = existing?.createdAt;
   const profile = useMemo<Profile | null>(
-    () =>
-      goal
-        ? { equipment, goal, experience, daysPerWeek: days, createdAt: createdAt ?? new Date().toISOString() }
-        : null,
+    () => (goal ? { equipment, goal, experience, daysPerWeek: days, createdAt: createdAt ?? new Date().toISOString() } : null),
     [equipment, goal, experience, days, createdAt],
   );
   const preview = useMemo(() => (profile ? generateProgram(profile) : null), [profile]);
@@ -66,205 +63,214 @@ export function Onboarding({ mode }: { mode: 'first' | 'edit' }) {
     else nav.tab('today');
   };
 
-  return (
-    <div className="app onboarding">
-      <header className="ob-head">
-        {idx > 0 || mode === 'edit' ? (
-          <button type="button" className="icon-btn" onClick={prev} aria-label="Back">
-            <Icon name="left" />
-          </button>
-        ) : (
-          <span className="topbar-spacer" />
-        )}
-        <div className="ob-dots" role="progressbar" aria-label="Setup progress" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={idx + 1}>
-          {steps.map((s, i) => (
-            <span key={s} className={`ob-dot ${i <= idx ? 'ob-dot-on' : ''}`} />
-          ))}
-        </div>
-        <span className="topbar-spacer" />
-      </header>
+  const topRow = (
+    <div className="row" style={{ gap: 14, minHeight: 44 }}>
+      {canGoBack && <RoundButton icon="back" label="Back" onClick={prev} />}
+      <StepDots index={idx} count={steps.length} />
+    </div>
+  );
 
-      <main className="ob-body">
-        {step === 'welcome' && (
-          <section>
-            <p className="eyebrow">ForearmForge</p>
-            <h1 className="display">Forge grip that doesn't quit.</h1>
-            <p className="lede">
-              One app for every forearm goal: crushing strength, bigger forearms, all-day endurance, healthy wrists or
-              climbing. Train with whatever you own, even nothing at all.
-            </p>
-            <div className="card safety-card">
-              <h2 className="card-title">
-                <Icon name="alert" size={18} /> Before you start
-              </h2>
-              <p>
-                This app gives general training information, not medical advice. Tendons adapt slower than muscles, so
-                build up gradually. Stop and see a professional if you notice:
-              </p>
-              <ul className="flags">
+  let head;
+  let body;
+  switch (step) {
+    case 'welcome':
+      head = (
+        <>
+          {topRow}
+          <div style={{ height: 14 }} />
+          <Huge value={EXERCISES.length} label="exercises" sub="for grip, wrists and forearms" size={104} />
+          <h1 className="title" style={{ fontSize: 36, paddingTop: 6 }}>
+            Forge a grip
+            <br />
+            that lasts.
+          </h1>
+        </>
+      );
+      body = (
+        <>
+          <p className="lede">Strength, size, endurance, healthy wrists or climbing. Train with whatever you own, even nothing at all.</p>
+          <section className="card">
+            <label className="check">
+              <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
+              <span>I understand this is general training info, not medical advice, and I'll stop if something hurts.</span>
+            </label>
+            <details>
+              <summary>When to stop</summary>
+              <ul className="flags" style={{ marginTop: 6 }}>
                 {SAFETY_FLAGS.map((f) => (
                   <li key={f}>{f}</li>
                 ))}
               </ul>
-              <label className="check">
-                <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
-                <span>I understand and I'm training at my own risk.</span>
-              </label>
-            </div>
+            </details>
           </section>
-        )}
-
-        {step === 'equipment' && (
-          <section>
-            <h1 className="display-sm">What do you have?</h1>
-            <p className="lede">Pick everything you can use. No-equipment moves are always included.</p>
-            <div className="equip-grid">
-              {EQUIPMENT.map((e) => {
-                const on = equipment.includes(e);
-                return (
-                  <button
-                    key={e}
-                    type="button"
-                    className={`equip-tile ${on ? 'equip-on' : ''}`}
-                    aria-pressed={on}
-                    disabled={e === 'bodyweight'}
-                    onClick={() => toggle(e)}
-                  >
-                    <EquipGlyph equipment={e} />
-                    <span>{EQUIPMENT_LABEL[e]}</span>
-                    {e === 'bodyweight' && <small>Always on</small>}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="muted center" aria-live="polite">
-              {poolSize} exercises unlocked
-            </p>
-          </section>
-        )}
-
-        {step === 'goal' && (
-          <section>
-            <h1 className="display-sm">What's the target?</h1>
-            <div className="stack">
-              {GOALS.map((g) => (
+        </>
+      );
+      break;
+    case 'equipment':
+      head = (
+        <>
+          {topRow}
+          <h1 className="title">What's in your kit?</h1>
+          <Huge value={poolSize} label="exercises unlocked" sub="Bodyweight moves are always in." />
+        </>
+      );
+      body = (
+        <>
+          <p className="muted">Tap everything you can use.</p>
+          <div className="chip-grid" role="group" aria-label="Equipment">
+            {EQUIPMENT.map((e) => {
+              const on = equipment.includes(e);
+              return (
                 <button
-                  key={g}
+                  key={e}
                   type="button"
-                  className={`option ${goal === g ? 'option-on' : ''}`}
-                  aria-pressed={goal === g}
-                  onClick={() => {
-                    setGoal(g);
-                    if (!existing) setDays(RECOMMENDED_DAYS[g]);
-                  }}
+                  className={`chip ${on ? 'chip-on' : ''}`}
+                  aria-pressed={on}
+                  aria-disabled={e === 'bodyweight' || undefined}
+                  onClick={() => toggle(e)}
+                  style={{ minHeight: 46 }}
                 >
-                  <span className="option-title">{GOAL_RULES[g].label}</span>
-                  <span className="option-sub">{GOAL_RULES[g].tagline}</span>
+                  {on && <Icon name="check" size={16} />}
+                  {e === 'bodyweight' ? 'Bodyweight' : EQUIPMENT_LABEL[e]}
                 </button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {step === 'details' && goal && (
-          <section>
-            <h1 className="display-sm">Dial it in</h1>
-            <h2 className="label">Experience</h2>
-            <div className="stack">
-              {EXPERIENCE.map((x) => (
-                <button
-                  key={x}
-                  type="button"
-                  className={`option option-compact ${experience === x ? 'option-on' : ''}`}
-                  aria-pressed={experience === x}
-                  onClick={() => setExperience(x)}
-                >
-                  <span className="option-title">{x[0]!.toUpperCase() + x.slice(1)}</span>
-                  <span className="option-sub">{EXPERIENCE_LABEL[x]}</span>
-                </button>
-              ))}
-            </div>
-            <h2 className="label">Training days per week</h2>
-            <div className="segmented" role="radiogroup" aria-label="Days per week">
-              {[2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  role="radio"
-                  aria-checked={days === n}
-                  className={days === n ? 'seg-on' : ''}
-                  onClick={() => setDays(n)}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-            <p className="muted">
-              Recommended for {GOAL_RULES[goal].label.toLowerCase()}: {GOAL_RULES[goal].frequency}.
-            </p>
-            {goal === 'climbing' && experience === 'beginner' && (
-              <div className="card note">
-                <Icon name="alert" size={18} />
-                <span>
-                  Max hangs are for climbers with a year or more of consistent training. You'll start with bodyweight
-                  dead hangs and grip basics.
-                </span>
+              );
+            })}
+          </div>
+        </>
+      );
+      break;
+    case 'goal':
+      head = (
+        <>
+          {topRow}
+          <h1 className="title">What's the target?</h1>
+          <p className="muted small">Pick the one that matters most. You can change it any time.</p>
+        </>
+      );
+      body = (
+        <div className="stack">
+          {GOALS.map((g) => (
+            <button
+              key={g}
+              type="button"
+              className={`option ${goal === g ? 'option-on' : ''}`}
+              aria-pressed={goal === g}
+              onClick={() => {
+                setGoal(g);
+                if (!existing) setDays(RECOMMENDED_DAYS[g]);
+              }}
+            >
+              <span className="option-title">{GOAL_RULES[g].label}</span>
+              <span className="option-sub">{GOAL_RULES[g].tagline}</span>
+            </button>
+          ))}
+        </div>
+      );
+      break;
+    case 'details':
+      head = (
+        <>
+          {topRow}
+          <h1 className="title">Dial it in</h1>
+          <Huge value={`${days}×`} label="a week" sub={goal ? `Recommended: ${GOAL_RULES[goal].frequency}` : undefined} />
+        </>
+      );
+      body = (
+        <>
+          <span className="eyebrow eyebrow-fog">Training days per week</span>
+          <div className="seg seg-wide" role="radiogroup" aria-label="Days per week">
+            {[2, 3, 4, 5].map((n) => (
+              <button key={n} type="button" role="radio" aria-checked={days === n} className={days === n ? 'seg-on' : ''} onClick={() => setDays(n)}>
+                {n}
+              </button>
+            ))}
+          </div>
+          <span className="eyebrow eyebrow-fog" style={{ paddingTop: 6 }}>
+            Experience
+          </span>
+          <div className="stack">
+            {EXPERIENCE.map((x) => (
+              <button
+                key={x}
+                type="button"
+                className={`option ${experience === x ? 'option-on' : ''}`}
+                aria-pressed={experience === x}
+                onClick={() => setExperience(x)}
+                style={{ padding: '12px 18px' }}
+              >
+                <span className="option-title">{x[0]!.toUpperCase() + x.slice(1)}</span>
+                <span className="option-sub">{EXPERIENCE_LABEL[x]}</span>
+              </button>
+            ))}
+          </div>
+          {goal === 'climbing' && experience === 'beginner' && (
+            <section className="card card-quiet">
+              <p className="muted small">
+                Max hangs are for climbers with a year or more of consistent training. You'll start with bodyweight dead hangs and grip basics.
+              </p>
+            </section>
+          )}
+        </>
+      );
+      break;
+    case 'preview':
+      head = (
+        <>
+          {topRow}
+          <div className="row-text">
+            <span className="eyebrow">Your plan</span>
+            <h1 className="title">{goal ? GOAL_RULES[goal].label : ''}</h1>
+          </div>
+          <Huge value={`${days}×`} label="a week" sub={goal ? `Rest ${GOAL_RULES[goal].restSec} s · ${GOAL_RULES[goal].effort.split(':')[0]}` : undefined} />
+        </>
+      );
+      body = (
+        <div className="stack">
+          {preview?.days.map((d) => (
+            <section className="card" key={d.index}>
+              <div className="row-between">
+                <h2 className="card-title">{dayName(d.index)}</h2>
+                <span className="muted tiny">{plural(d.exercises.length, 'exercise')}</span>
               </div>
-            )}
-          </section>
-        )}
+              <ul>
+                {d.exercises.map((p) => (
+                  <li key={p.exerciseId} className="row-between small" style={{ padding: '3px 0' }}>
+                    <span>{getExercise(p.exerciseId)?.name}</span>
+                    <span className="muted num">
+                      {p.sets} × {p.holdSec ? `${p.holdSec} s` : p.reps}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      );
+      break;
+  }
 
-        {step === 'preview' && preview && goal && (
-          <section>
-            <p className="eyebrow">Your plan</p>
-            <h1 className="display-sm">
-              {GOAL_RULES[goal].label}, {days}× a week
-            </h1>
-            <div className="stack">
-              {preview.days.map((d) => (
-                <div className="card" key={d.index}>
-                  <div className="row-between">
-                    <h2 className="card-title">{dayName(d.index)}</h2>
-                    <span className="muted">{d.exercises.length} exercises</span>
-                  </div>
-                  <ul className="plain-list">
-                    {d.exercises.map((p) => (
-                      <li key={p.exerciseId}>
-                        {getExercise(p.exerciseId)?.name}
-                        <span className="muted">
-                          {' '}
-                          · {p.sets}×{p.holdSec ? `${p.holdSec}s` : p.reps}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-            <div className="chips">
-              <Chip tone="teal">Rest {GOAL_RULES[goal].restSec}s</Chip>
-              <Chip>{GOAL_RULES[goal].effort.split(':')[0]}</Chip>
-            </div>
-          </section>
-        )}
+  return (
+    <div className="app">
+      <Block tall={step === 'welcome'}>{head}</Block>
+      <main className="content" style={{ gap: 14 }}>
+        {body}
+        <div className="push-down" style={{ paddingTop: 8 }}>
+          {step === 'preview' ? (
+            <button type="button" className="btn btn-primary btn-block" onClick={() => save(false)}>
+              {mode === 'edit' ? 'Save and rebuild plan' : 'Start training'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-primary btn-block"
+              disabled={(step === 'welcome' && !accepted) || (step === 'goal' && !goal)}
+              onClick={next}
+            >
+              {step === 'welcome' ? 'Get started' : 'Continue'}
+            </button>
+          )}
+        </div>
       </main>
-
-      <footer className="ob-foot">
-        {step === 'preview' ? (
-          <button type="button" className="btn btn-primary btn-block" onClick={() => save(false)}>
-            {mode === 'edit' ? 'Save & rebuild plan' : 'Start training'}
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="btn btn-primary btn-block"
-            disabled={(step === 'welcome' && !accepted) || (step === 'goal' && !goal)}
-            onClick={next}
-          >
-            Continue
-          </button>
-        )}
-      </footer>
 
       {confirmActive && (
         <Modal
@@ -272,11 +278,11 @@ export function Onboarding({ mode }: { mode: 'first' | 'edit' }) {
           onClose={() => setConfirmActive(false)}
           actions={
             <>
-              <button type="button" className="btn btn-ghost" onClick={() => setConfirmActive(false)}>
+              <button type="button" className="btn btn-secondary" onClick={() => setConfirmActive(false)}>
                 Keep it
               </button>
-              <button type="button" className="btn btn-danger" onClick={() => save(true)}>
-                Discard & rebuild
+              <button type="button" className="btn btn-safety" onClick={() => save(true)}>
+                Discard and rebuild
               </button>
             </>
           }

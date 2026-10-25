@@ -1,4 +1,4 @@
-import { EQUIPMENT, EXPERIENCE, GOALS, type AppData } from './types';
+import { CLOSES, EQUIPMENT, EXPERIENCE, GOALS, GRIPPER_IDS, type AppData, type Measurement } from './types';
 
 export const STORAGE_KEY = 'forearmforge:v1';
 
@@ -11,6 +11,7 @@ export function defaultData(): AppData {
     active: null,
     units: 'kg',
     disclaimerAccepted: false,
+    measurements: [],
   };
 }
 
@@ -25,7 +26,15 @@ function validSets(v: unknown): boolean {
   return (
     Array.isArray(v) &&
     v.length <= 100 &&
-    v.every((s) => isObj(s) && optNum(s.reps, 10_000) && optNum(s.weight, 10_000) && optNum(s.seconds, 86_400))
+    v.every(
+      (s) =>
+        isObj(s) &&
+        optNum(s.reps, 10_000) &&
+        optNum(s.weight, 10_000) &&
+        optNum(s.seconds, 86_400) &&
+        (s.gripper === undefined || (GRIPPER_IDS as readonly unknown[]).includes(s.gripper)) &&
+        (s.close === undefined || (CLOSES as readonly unknown[]).includes(s.close)),
+    )
   );
 }
 
@@ -90,6 +99,9 @@ function validActive(v: unknown): boolean {
   );
 }
 
+const validMeasurement = (m: unknown): m is Measurement =>
+  isObj(m) && isDate(m.at) && isNum(m.left) && isNum(m.right) && m.left > 0 && m.left < 100 && m.right > 0 && m.right < 100;
+
 /**
  * Parses and validates persisted or imported JSON. Returns null when the payload
  * is not a usable ForearmForge backup. Malformed sessions are dropped rather than
@@ -125,6 +137,8 @@ export function parseData(raw: string): AppData | null {
     active: validActive(v.active) ? (v.active as unknown as AppData['active']) : null,
     units: v.units === 'lb' ? 'lb' : 'kg',
     disclaimerAccepted: v.disclaimerAccepted === true,
+    measurements: Array.isArray(v.measurements) ? v.measurements.filter(validMeasurement) : [],
+    ...(isStr(v.measureSkippedOn) && /^\d{4}-\d{2}-\d{2}$/.test(v.measureSkippedOn) ? { measureSkippedOn: v.measureSkippedOn } : {}),
   };
 }
 
