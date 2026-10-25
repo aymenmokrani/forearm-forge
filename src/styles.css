@@ -871,6 +871,109 @@ button.card {
   width: 100%;
 }
 
+/* ---------- Exercise photos (tinted to the palette) ---------- */
+
+.photos {
+  position: relative;
+  margin: 0;
+}
+
+.photos-row {
+  display: flex;
+  gap: 6px;
+}
+
+.photo {
+  position: relative;
+  flex: 1;
+  aspect-ratio: 4 / 3;
+  border-radius: 16px 16px 16px 4px;
+  overflow: hidden;
+  background: var(--peri);
+}
+
+.photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: grayscale(1) contrast(1.15) brightness(0.95);
+  mix-blend-mode: luminosity;
+  opacity: 0.92;
+}
+
+.photo-label {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(23, 28, 51, 0.82);
+  color: var(--ice);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.photo-label b {
+  color: var(--soft-coral);
+}
+
+.photos-arrow {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  width: 56px;
+  height: 30px;
+  padding: 2px 6px 0;
+  border-radius: 0 0 14px 14px;
+  background: rgba(23, 28, 51, 0.9);
+  top: 0;
+  transform: translateX(-50%);
+}
+
+.photos-compact .photo {
+  aspect-ratio: 16 / 10;
+}
+
+.photo-credit {
+  font-size: 11px;
+  color: var(--haze);
+  text-align: center;
+}
+
+.step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.step-n {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(255, 95, 63, 0.14);
+  color: var(--soft-coral);
+  font-weight: 600;
+  font-size: 13px;
+  display: grid;
+  place-items: center;
+}
+
+.tip {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.tip-avoid {
+  color: var(--pink);
+}
+
 /* ---------- Charts ---------- */
 
 .chart {
