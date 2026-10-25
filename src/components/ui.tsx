@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 
 export function Stepper({
@@ -24,17 +24,32 @@ export function Stepper({
     setText(String(value));
   }, [value]);
 
+  const id = useId();
+  // +/- taps announce the new value once the tapping settles, not on every tap.
+  const [said, setSaid] = useState('');
+  const sayTimer = useRef<number>();
+  useEffect(() => () => window.clearTimeout(sayTimer.current), []);
+  const bump = (delta: number) => {
+    const next = clamp(value + delta);
+    onChange(next);
+    window.clearTimeout(sayTimer.current);
+    sayTimer.current = window.setTimeout(() => setSaid(`${label.split(' · ').join(', ')} ${next}${suffix ? ` ${suffix}` : ''}`), 400);
+  };
+
   return (
     <div className="stepper">
-      <span className="stepper-label">{label}</span>
+      <label id={`${id}-label`} htmlFor={`${id}-input`} className="stepper-label">
+        {label}
+      </label>
       <div className="stepper-row">
-        <button type="button" className="round-btn" aria-label={`Decrease ${label}`} onClick={() => onChange(clamp(value - step))}>
+        <button type="button" className="round-btn" aria-label={`Decrease ${label}`} onClick={() => bump(-step)}>
           <Icon name="minus" />
         </button>
         <label className="stepper-value">
           <input
+            id={`${id}-input`}
             inputMode="decimal"
-            aria-label={label}
+            aria-labelledby={`${id}-label`}
             value={text}
             onChange={(e) => setText(e.target.value)}
             onBlur={() => {
@@ -47,10 +62,13 @@ export function Stepper({
           />
           {suffix && <span className="stepper-suffix">{suffix}</span>}
         </label>
-        <button type="button" className="round-btn" aria-label={`Increase ${label}`} onClick={() => onChange(clamp(value + step))}>
+        <button type="button" className="round-btn" aria-label={`Increase ${label}`} onClick={() => bump(step)}>
           <Icon name="plus" />
         </button>
       </div>
+      <span className="sr-only" aria-live="polite">
+        {said}
+      </span>
     </div>
   );
 }
@@ -69,13 +87,15 @@ export function Modal({
   tone?: 'default' | 'danger';
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const id = useId();
   // Callers pass inline handlers; keep the latest without re-running the mount effect.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
-    ref.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus();
+    // Focus the dialog itself: the first button is often the destructive one.
+    ref.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onCloseRef.current();
@@ -87,7 +107,10 @@ export function Modal({
       const first = items[0];
       const last = items[items.length - 1];
       if (!first || !last) return;
-      if (e.shiftKey && document.activeElement === first) {
+      if (document.activeElement === ref.current) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();
         last.focus();
       } else if (!e.shiftKey && document.activeElement === last) {
@@ -109,13 +132,19 @@ export function Modal({
         className={`sheet ${tone === 'danger' ? 'sheet-danger' : ''}`}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="sheet-title"
+        aria-labelledby={`${id}-title`}
+        aria-describedby={children ? `${id}-body` : undefined}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="sheet-title" className="sheet-title">
+        <h2 id={`${id}-title`} className="sheet-title">
           {title}
         </h2>
-        {children && <div className="sheet-body">{children}</div>}
+        {children && (
+          <div id={`${id}-body`} className="sheet-body">
+            {children}
+          </div>
+        )}
         <div className="sheet-actions">{actions}</div>
       </div>
     </div>
@@ -177,7 +206,7 @@ export function Bars({ filled, total, tone = 'coral', label, pips }: { filled: n
 
 export function StepDots({ index, count }: { index: number; count: number }) {
   return (
-    <div className="steps-dots" role="progressbar" aria-label="Setup progress" aria-valuemin={1} aria-valuemax={count} aria-valuenow={index + 1}>
+    <div className="steps-dots" role="progressbar" aria-label="Setup progress" aria-valuemin={1} aria-valuemax={count} aria-valuenow={index + 1} aria-valuetext={`Step ${index + 1} of ${count}`}>
       {Array.from({ length: count }, (_, k) => (
         <span key={k} className={`${k <= index ? 'dot-on' : ''} ${k === index ? 'dot-now' : ''}`} />
       ))}

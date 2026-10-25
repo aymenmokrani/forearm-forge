@@ -1,6 +1,17 @@
 import { CLOSES, EQUIPMENT, EXPERIENCE, GOALS, GRIPPER_IDS, type AppData, type Measurement } from './types';
 
 export const STORAGE_KEY = 'forearmforge:v1';
+const CORRUPT_PREFIX = `${STORAGE_KEY}:corrupt:`;
+
+/** Schema this build reads and writes. Bump it together with a MIGRATIONS entry. */
+export const CURRENT_SCHEMA = 1;
+
+/**
+ * MIGRATIONS[n] upgrades a raw version-n payload to version n + 1 (and must set
+ * schemaVersion). parseData runs them in order before validating, so older
+ * backups keep loading after a schema change.
+ */
+const MIGRATIONS: Record<number, (v: Record<string, unknown>) => Record<string, unknown>> = {};
 
 export function defaultData(): AppData {
   return {
@@ -114,7 +125,14 @@ export function parseData(raw: string): AppData | null {
   } catch {
     return null;
   }
-  if (!isObj(v) || v.schemaVersion !== 1 || !Array.isArray(v.sessions)) return null;
+  if (!isObj(v) || !isInt(v.schemaVersion, 1, CURRENT_SCHEMA)) return null;
+  for (let ver = v.schemaVersion; ver < CURRENT_SCHEMA; ver++) {
+    const migrate = MIGRATIONS[ver];
+    if (!migrate) return null;
+    v = migrate(v as Record<string, unknown>);
+    if (!isObj(v)) return null;
+  }
+  if (!Array.isArray(v.sessions)) return null;
   const base = defaultData();
   const seen = new Set<string>();
   const sessions = v.sessions.filter((s): s is AppData['sessions'][number] => {
@@ -143,28 +161,81 @@ export function parseData(raw: string): AppData | null {
   };
 }
 
+/** True when the payload was written by a newer build; it must be left untouched. */
+export function isNewerSchema(raw: string): boolean {
+  try {
+    const v: unknown = JSON.parse(raw);
+    return isObj(v) && isNum(v.schemaVersion) && v.schemaVersion > CURRENT_SCHEMA;
+  } catch {
+    return false;
+  }
+}
+
 interface KV {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
+  // Optional so plain stand-ins work; needed to prune old corrupt backups.
+  removeItem?(key: string): void;
+  key?(index: number): string | null;
+  readonly length?: number;
 }
 
-export function loadData(store: KV): AppData {
+/**
+ * Copies an unreadable payload to a `:corrupt:` key, keeping only the newest
+ * such backup. Returns false when the copy could not be written.
+ */
+export function backupCorrupt(store: KV, raw: string): boolean {
+  const key = `${CORRUPT_PREFIX}${Date.now()}`;
+  try {
+    store.setItem(key, raw);
+  } catch {
+    return false; // storage full; nothing more we can do
+  }
+  try {
+    if (store.key && store.removeItem && store.length !== undefined) {
+      const stale: string[] = [];
+      for (let i = 0; i < store.length; i++) {
+        const k = store.key(i);
+        if (k && k !== key && k.startsWith(CORRUPT_PREFIX)) stale.push(k);
+      }
+      stale.forEach((k) => store.removeItem!(k));
+    }
+  } catch {
+    /* pruning is best-effort */
+  }
+  return true;
+}
+
+/**
+ * ok: parsed stored data. empty: nothing stored. newer: written by a newer build
+ * (left as is). unreadable: present but unusable; backedUp says whether a
+ * `:corrupt:` copy exists, i.e. whether overwriting it is safe.
+ */
+export type LoadStatus = 'ok' | 'empty' | 'unreadable' | 'newer';
+export interface LoadResult {
+  data: AppData;
+  status: LoadStatus;
+  backedUp: boolean;
+  raw: string | null;
+}
+
+export function loadDataResult(store: KV): LoadResult {
   let raw: string | null;
   try {
     raw = store.getItem(STORAGE_KEY);
   } catch {
-    return defaultData();
+    return { data: defaultData(), status: 'unreadable', backedUp: false, raw: null };
   }
-  if (raw === null) return defaultData();
+  if (raw === null) return { data: defaultData(), status: 'empty', backedUp: false, raw };
   const parsed = parseData(raw);
-  if (parsed) return parsed;
+  if (parsed) return { data: parsed, status: 'ok', backedUp: false, raw };
+  if (isNewerSchema(raw)) return { data: defaultData(), status: 'newer', backedUp: false, raw };
   // Keep the unreadable payload around instead of silently destroying it.
-  try {
-    store.setItem(`${STORAGE_KEY}:corrupt:${Date.now()}`, raw);
-  } catch {
-    /* storage full; nothing more we can do */
-  }
-  return defaultData();
+  return { data: defaultData(), status: 'unreadable', backedUp: backupCorrupt(store, raw), raw };
+}
+
+export function loadData(store: KV): AppData {
+  return loadDataResult(store).data;
 }
 
 export function saveData(store: KV, data: AppData): boolean {

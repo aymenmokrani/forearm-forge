@@ -56,7 +56,8 @@ button {
   cursor: pointer;
 }
 
-button:disabled {
+button:disabled,
+.btn[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.4;
 }
@@ -64,6 +65,24 @@ button:disabled {
 :focus-visible {
   outline: 2px solid var(--peri);
   outline-offset: 2px;
+}
+
+/* Headings and dialogs that take focus programmatically (screen changes). */
+[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* Visually hidden, still read by screen readers. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 h1,
@@ -341,7 +360,7 @@ button.card {
   transition: transform 0.12s ease-out;
 }
 
-.btn:active:not(:disabled) {
+.btn:active:not(:disabled):not([aria-disabled="true"]) {
   transform: scale(0.97);
 }
 

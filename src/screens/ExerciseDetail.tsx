@@ -69,7 +69,7 @@ export function ExerciseDetail({ id }: { id: string }) {
         <section className="card">
           <h2 className="card-title">How to</h2>
           {guide ? (
-            <ol className="stack">
+            <ol className="stack" role="list">
               {guide.steps.map((s, k) => (
                 <li key={s} className="step">
                   <span className="step-n">{k + 1}</span>
@@ -80,7 +80,7 @@ export function ExerciseDetail({ id }: { id: string }) {
           ) : (
             <p>{ex.cue}</p>
           )}
-          <ul className="tags">
+          <ul className="tags" role="list">
             {ex.targets.map((t) => (
               <li key={t} className="tag">
                 {TARGET_LABEL[t]}
@@ -92,13 +92,13 @@ export function ExerciseDetail({ id }: { id: string }) {
         {guide && (
           <section className="card" style={{ gap: 8 }}>
             <p className="tip">
-              <span className="mint" aria-label="Do">
+              <span className="mint" role="img" aria-label="Do">
                 <Icon name="check" size={18} />
               </span>
               <span>{guide.do}</span>
             </p>
             <p className="tip">
-              <span className="tip-avoid" aria-label="Avoid">
+              <span className="tip-avoid" role="img" aria-label="Avoid">
                 <Icon name="close" size={18} />
               </span>
               <span>{guide.avoid}</span>

@@ -25,6 +25,21 @@ interface NavValue {
 
 const NavCtx = createContext<NavValue | null>(null);
 
+const TAB_TITLE: Record<Tab, string> = { today: 'Today', plan: 'Plan', library: 'Library', progress: 'Progress', me: 'Me' };
+const SCREEN_TITLE: Record<Exclude<Route['name'], 'tab'>, string> = {
+  player: 'Workout',
+  warmup: 'Warm-up',
+  summary: 'Workout summary',
+  exercise: 'Exercise',
+  session: 'Session',
+  ladder: 'Gripper ladder',
+  setup: 'Edit plan',
+};
+
+/** Document title for a screen; the home screen keeps the plain app name. */
+export const screenTitle = (r: Route) =>
+  r.name === 'tab' && r.tab === 'today' ? 'ForearmForge' : `${r.name === 'tab' ? TAB_TITLE[r.tab] : SCREEN_TITLE[r.name]} · ForearmForge`;
+
 /** Stack position stored on each history entry, so popstate knows where it landed. */
 const depthOf = (state: unknown) =>
   typeof state === 'object' && state !== null && typeof (state as { ffDepth?: unknown }).ffDepth === 'number'
@@ -56,8 +71,17 @@ export function NavProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const route = stack[stack.length - 1]!;
+  const shownRoute = useRef(route);
   useEffect(() => {
     window.scrollTo(0, 0);
+    document.title = screenTitle(route);
+    // On a real screen change (not the first load), start screen readers at the new heading.
+    if (shownRoute.current === route) return;
+    shownRoute.current = route;
+    const heading = document.querySelector<HTMLElement>('h1');
+    if (!heading) return;
+    if (!heading.hasAttribute('tabindex')) heading.tabIndex = -1;
+    heading.focus({ preventScroll: true });
   }, [route]);
 
   const go = useCallback((r: Route) => {

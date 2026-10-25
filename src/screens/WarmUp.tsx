@@ -79,7 +79,7 @@ export function WarmUp() {
                 {w.name}
               </span>
               {k < step ? (
-                <span className="mint" aria-label="Done">
+                <span className="mint" role="img" aria-label="Done">
                   <Icon name="check" size={18} />
                 </span>
               ) : (
