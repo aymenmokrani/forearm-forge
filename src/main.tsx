@@ -1,0 +1,27 @@
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { App } from './App';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { NavProvider } from './state/nav';
+import { StoreProvider } from './state/store';
+import './styles.css';
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <ErrorBoundary>
+      <StoreProvider>
+        <NavProvider>
+          <App />
+        </NavProvider>
+      </StoreProvider>
+    </ErrorBoundary>
+  </StrictMode>,
+);
+
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      /* offline support is best-effort */
+    });
+  });
+}
