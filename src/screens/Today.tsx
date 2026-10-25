@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Bars, Block, Huge, Modal } from '../components/ui';
 import { getExercise } from '../domain/exercises';
 import { dayName, nextDayIndex } from '../domain/generator';
@@ -38,6 +38,7 @@ function MeasureCard() {
   const [right, setRight] = useState(last ? String(last.right) : '');
   const l = parseCm(left);
   const r = parseCm(right);
+  const hintId = useId();
 
   return (
     <section className="card" aria-labelledby="measure-title">
@@ -53,6 +54,9 @@ function MeasureCard() {
         </button>
       </div>
       <p className="muted tiny">Measure the widest part, relaxed, before you train. A pump inflates it.</p>
+      <span id={hintId} className="sr-only">
+        10 to 80 cm
+      </span>
       <div className="field-row">
         {(
           [
@@ -62,7 +66,15 @@ function MeasureCard() {
         ).map(([side, value, set]) => (
           <label key={side} className="field">
             <span className="field-label">{side} · cm</span>
-            <input inputMode="decimal" value={value} placeholder="0.0" onChange={(e) => set(e.target.value)} onFocus={(e) => e.target.select()} />
+            <input
+              inputMode="decimal"
+              value={value}
+              placeholder="0.0"
+              aria-describedby={hintId}
+              aria-invalid={value.trim() !== '' && parseCm(value) === null}
+              onChange={(e) => set(e.target.value)}
+              onFocus={(e) => e.target.select()}
+            />
           </label>
         ))}
         <button

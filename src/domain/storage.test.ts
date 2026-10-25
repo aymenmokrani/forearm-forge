@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateProgram } from './generator';
-import { STORAGE_KEY, defaultData, loadData, parseData, saveData } from './storage';
+import { CURRENT_SCHEMA, STORAGE_KEY, defaultData, loadData, loadDataResult, parseData, saveData } from './storage';
 import type { AppData } from './types';
 
 function memoryStore(initial: Record<string, string> = {}) {
@@ -9,8 +9,16 @@ function memoryStore(initial: Record<string, string> = {}) {
     map,
     getItem: (k: string) => map.get(k) ?? null,
     setItem: (k: string, v: string) => void map.set(k, v),
+    removeItem: (k: string) => void map.delete(k),
+    key: (i: number) => [...map.keys()][i] ?? null,
+    get length() {
+      return map.size;
+    },
   };
 }
+
+const corruptKeys = (store: ReturnType<typeof memoryStore>) =>
+  [...store.map.keys()].filter((k) => k.startsWith(`${STORAGE_KEY}:corrupt:`));
 
 const sample = (): AppData => {
   const profile = {
@@ -53,8 +61,46 @@ describe('storage', () => {
   it('backs up corrupt payloads instead of discarding them', () => {
     const store = memoryStore({ [STORAGE_KEY]: '{not json' });
     expect(loadData(store)).toEqual(defaultData());
-    const backups = [...store.map.keys()].filter((k) => k.startsWith(`${STORAGE_KEY}:corrupt:`));
-    expect(backups).toHaveLength(1);
+    expect(corruptKeys(store)).toHaveLength(1);
+  });
+
+  it('reports load status', () => {
+    const store = memoryStore();
+    expect(loadDataResult(store).status).toBe('empty');
+    const data = sample();
+    saveData(store, data);
+    expect(loadDataResult(store)).toMatchObject({ status: 'ok', data });
+  });
+
+  it('leaves data from a newer schema untouched', () => {
+    const raw = JSON.stringify({ ...sample(), schemaVersion: CURRENT_SCHEMA + 1 });
+    const store = memoryStore({ [STORAGE_KEY]: raw });
+    const res = loadDataResult(store);
+    expect(res.status).toBe('newer');
+    expect(res.data).toEqual(defaultData());
+    expect(corruptKeys(store)).toHaveLength(0);
+    expect(store.map.get(STORAGE_KEY)).toBe(raw);
+  });
+
+  it('keeps only the newest corrupt backup', () => {
+    const store = memoryStore({ [STORAGE_KEY]: '{not json', [`${STORAGE_KEY}:corrupt:1`]: 'old', [`${STORAGE_KEY}:corrupt:2`]: 'older' });
+    const res = loadDataResult(store);
+    expect(res).toMatchObject({ status: 'unreadable', backedUp: true });
+    const keys = corruptKeys(store);
+    expect(keys).toHaveLength(1);
+    expect(store.map.get(keys[0]!)).toBe('{not json');
+    expect(store.map.get(STORAGE_KEY)).toBe('{not json');
+  });
+
+  it('flags an unreadable payload it could not back up', () => {
+    const map = new Map([[STORAGE_KEY, '{not json']]);
+    const full = {
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: () => {
+        throw new Error('QuotaExceededError');
+      },
+    };
+    expect(loadDataResult(full)).toMatchObject({ status: 'unreadable', backedUp: false, raw: '{not json' });
   });
 
   it('rejects payloads that are not ForearmForge data', () => {

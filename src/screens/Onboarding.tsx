@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { Block, Huge, Modal, RoundButton, StepDots } from '../components/ui';
 import { EQUIPMENT_LABEL, EXERCISES, getExercise } from '../domain/exercises';
@@ -38,6 +38,20 @@ export function Onboarding({ mode }: { mode: 'first' | 'edit' }) {
   const next = () => setStep(steps[Math.min(idx + 1, steps.length - 1)]!);
   const prev = () => (idx === 0 ? nav.back() : setStep(steps[idx - 1]!));
   const canGoBack = idx > 0 || mode === 'edit';
+  const blocked = (step === 'welcome' && !accepted) || (step === 'goal' && !goal);
+  const hintId = useId();
+
+  // A new step is a new screen for screen readers: start them at its heading.
+  const screen = useRef<HTMLDivElement>(null);
+  const shownStep = useRef(step);
+  useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    const heading = screen.current?.querySelector<HTMLElement>('h1');
+    if (!heading) return;
+    if (!heading.hasAttribute('tabindex')) heading.tabIndex = -1;
+    heading.focus({ preventScroll: true });
+  }, [step]);
 
   const createdAt = existing?.createdAt;
   const profile = useMemo<Profile | null>(
@@ -96,7 +110,7 @@ export function Onboarding({ mode }: { mode: 'first' | 'edit' }) {
             </label>
             <details>
               <summary>When to stop</summary>
-              <ul className="flags" style={{ marginTop: 6 }}>
+              <ul className="flags" role="list" style={{ marginTop: 6 }}>
                 {SAFETY_FLAGS.map((f) => (
                   <li key={f}>{f}</li>
                 ))}
@@ -232,7 +246,7 @@ export function Onboarding({ mode }: { mode: 'first' | 'edit' }) {
                 <h2 className="card-title">{dayName(d.index)}</h2>
                 <span className="muted tiny">{plural(d.exercises.length, 'exercise')}</span>
               </div>
-              <ul>
+              <ul role="list">
                 {d.exercises.map((p) => (
                   <li key={p.exerciseId} className="row-between small" style={{ padding: '3px 0' }}>
                     <span>{getExercise(p.exerciseId)?.name}</span>
@@ -250,7 +264,7 @@ export function Onboarding({ mode }: { mode: 'first' | 'edit' }) {
   }
 
   return (
-    <div className="app">
+    <div ref={screen} className="app">
       <Block tall={step === 'welcome'}>{head}</Block>
       <main className="content" style={{ gap: 14 }}>
         {body}
@@ -260,14 +274,24 @@ export function Onboarding({ mode }: { mode: 'first' | 'edit' }) {
               {mode === 'edit' ? 'Save and rebuild plan' : 'Start training'}
             </button>
           ) : (
-            <button
-              type="button"
-              className="btn btn-primary btn-block"
-              disabled={(step === 'welcome' && !accepted) || (step === 'goal' && !goal)}
-              onClick={next}
-            >
-              {step === 'welcome' ? 'Get started' : 'Continue'}
-            </button>
+            <>
+              <button
+                type="button"
+                className="btn btn-primary btn-block"
+                aria-disabled={blocked || undefined}
+                aria-describedby={blocked ? hintId : undefined}
+                onClick={() => {
+                  if (!blocked) next();
+                }}
+              >
+                {step === 'welcome' ? 'Get started' : 'Continue'}
+              </button>
+              {blocked && (
+                <span id={hintId} className="sr-only">
+                  {step === 'welcome' ? 'Tick the box above first.' : 'Pick a goal first.'}
+                </span>
+              )}
+            </>
           )}
         </div>
       </main>

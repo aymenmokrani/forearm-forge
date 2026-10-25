@@ -6,7 +6,8 @@ dumbbells, wrist roller, bands, rice bucket, pull-up bar… or nothing at all) a
 each workout with hold and rest timers, logs every set, and tracks your records. Works fully offline
 and can be installed to your phone's home screen.
 
-Design doc: [docs/SDD-v0.1.md](docs/SDD-v0.1.md)
+Design doc: [docs/SDD-v0.1.md](docs/SDD-v0.1.md) · v2 decisions: [docs/DESIGN-v2.md](docs/DESIGN-v2.md) ·
+Launch roadmap: [docs/LAUNCH-ROADMAP.md](docs/LAUNCH-ROADMAP.md)
 
 ## Run it
 
