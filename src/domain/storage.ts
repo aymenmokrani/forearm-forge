@@ -138,6 +138,7 @@ export function parseData(raw: string): AppData | null {
     units: v.units === 'lb' ? 'lb' : 'kg',
     disclaimerAccepted: v.disclaimerAccepted === true,
     measurements: Array.isArray(v.measurements) ? v.measurements.filter(validMeasurement) : [],
+    ...(v.soundOff === true ? { soundOff: true } : {}),
     ...(isStr(v.measureSkippedOn) && /^\d{4}-\d{2}-\d{2}$/.test(v.measureSkippedOn) ? { measureSkippedOn: v.measureSkippedOn } : {}),
   };
 }

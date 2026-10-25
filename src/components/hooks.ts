@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { sfx } from './sound';
 
 /** Ticks a clock while `running`. Timers derive from Date.now() so backgrounding the tab can't drift them. */
 export function useNow(running: boolean, intervalMs = 250): number {
@@ -37,32 +38,12 @@ export function useWakeLock(enabled: boolean) {
   }, [enabled]);
 }
 
-let audioCtx: AudioContext | null = null;
-
-/** Timer finished: a rising three-note chime and three short vibrations. Web audio follows the silent switch on iOS. */
+/** Timer finished: rising three-note chime (if sounds are on) and three short vibrations. */
 export function signal() {
   try {
     navigator.vibrate?.([90, 70, 90, 70, 90]);
   } catch {
     /* ignore */
   }
-  try {
-    audioCtx ??= new AudioContext();
-    const t0 = audioCtx.currentTime;
-    [660, 880, 1175].forEach((freq, k) => {
-      const osc = audioCtx!.createOscillator();
-      const gain = audioCtx!.createGain();
-      const at = t0 + k * 0.13;
-      osc.type = 'triangle';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.0001, at);
-      gain.gain.exponentialRampToValueAtTime(0.16, at + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, at + 0.3);
-      osc.connect(gain).connect(audioCtx!.destination);
-      osc.start(at);
-      osc.stop(at + 0.32);
-    });
-  } catch {
-    /* audio unavailable */
-  }
+  sfx.timerDone();
 }

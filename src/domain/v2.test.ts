@@ -121,6 +121,11 @@ describe('forearm measurements', () => {
     expect(parseData(JSON.stringify(bad))!.sessions).toEqual([]);
   });
 
+  it('keeps the sounds-off setting and defaults to sounds on', () => {
+    expect(parseData(JSON.stringify({ ...defaultData(), soundOff: true }))?.soundOff).toBe(true);
+    expect(parseData(JSON.stringify(defaultData()))?.soundOff).toBeUndefined();
+  });
+
   it('loads v1 backups that have no measurements', () => {
     const { measurements: _, ...v1 } = defaultData();
     expect(parseData(JSON.stringify(v1))?.measurements).toEqual([]);

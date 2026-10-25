@@ -138,4 +138,6 @@ export interface AppData {
   measurements: Measurement[];
   /** Day ("YYYY-MM-DD", local) the forearm prompt was dismissed with "Not today". */
   measureSkippedOn?: string;
+  /** Timer ticks and workout sounds are on unless this is true. */
+  soundOff?: boolean;
 }
