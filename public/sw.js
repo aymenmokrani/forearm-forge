@@ -3,22 +3,27 @@
 // Strategy:
 // - Page loads: network first; each successful load refreshes the cached shell and
 //   prunes hashed bundles the new shell no longer references, so the cache doesn't grow.
-// - /assets/* (content-hashed) and Google Fonts: cache first.
+// - <base>/assets/* (content-hashed) and Google Fonts: cache first.
 // - Other same-origin files (manifest, icons): network first, cache as offline fallback.
+// The app may live at the site root or under a subpath (GitHub Pages: /<repo>/);
+// the worker's own scope tells us which.
+const BASE = new URL(self.registration.scope).pathname;
+const ASSETS = `${BASE}assets/`;
 const CACHE = 'ff-shell';
-const SHELL = ['/', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
+const SHELL = ['manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'].map((f) => BASE + f);
 const FONT_CSS = 'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap';
 
-const assetsIn = (html) => [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1]);
+const assetsIn = (html) =>
+  [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1]).filter((p) => p.startsWith(ASSETS));
 
 async function cacheShell(cache, response) {
   const html = await response.clone().text();
-  await cache.put('/', response.clone());
+  await cache.put(BASE, response.clone());
   const keep = new Set(assetsIn(html));
   await cache.addAll([...keep]);
   for (const req of await cache.keys()) {
     const path = new URL(req.url).pathname;
-    if (path.startsWith('/assets/') && !keep.has(path)) await cache.delete(req);
+    if (path.startsWith(ASSETS) && !keep.has(path)) await cache.delete(req);
   }
 }
 
@@ -26,8 +31,8 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE);
-      await cache.addAll(SHELL.slice(1));
-      await cacheShell(cache, await fetch('/', { cache: 'no-store' }));
+      await cache.addAll(SHELL);
+      await cacheShell(cache, await fetch(BASE, { cache: 'no-store' }));
       // Fonts are a nice-to-have offline; don't fail the install over them.
       await fetch(FONT_CSS, { mode: 'no-cors' })
         .then((r) => cache.put(FONT_CSS, r))
@@ -82,7 +87,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         } catch {
-          return (await caches.match('/')) ?? Response.error();
+          return (await caches.match(BASE)) ?? Response.error();
         }
       })(),
     );
@@ -92,6 +97,6 @@ self.addEventListener('fetch', (event) => {
   if (url.hostname.endsWith('fonts.googleapis.com') || url.hostname.endsWith('fonts.gstatic.com')) {
     event.respondWith(cacheFirst(request));
   } else if (url.origin === self.location.origin) {
-    event.respondWith(url.pathname.startsWith('/assets/') ? cacheFirst(request) : networkFirst(request));
+    event.respondWith(url.pathname.startsWith(ASSETS) ? cacheFirst(request) : networkFirst(request));
   }
 });
