@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { signal, useNow, useWakeLock } from '../components/hooks';
+import { ExercisePhotos } from '../components/ExercisePhotos';
 import { Icon } from '../components/Icon';
 import { sfx } from '../components/sound';
 import { Bars, Block, Modal, RoundButton, Stepper } from '../components/ui';
 import { getExercise, isLoaded } from '../domain/exercises';
 import { SAFETY_FLAGS } from '../domain/goals';
+import { GUIDES } from '../domain/guide';
 import { buildLadder, CLOSE_EXERCISES, CLOSES_TO_CLAIM, getGripper, GRIPPERS, lastGripper } from '../domain/ladder';
 import { CLOSES, type ActiveSession, type Close, type LoggedSet, type Session } from '../domain/types';
 import { formatSeconds, formatWeight, fromDisplay, toDisplay, weightStep } from '../domain/units';
@@ -33,6 +35,7 @@ export function Player() {
   const entry = active.entries[i]!;
   const done = entry.sets;
   const ex = getExercise(planned.exerciseId);
+  const guide = GUIDES[planned.exerciseId];
   const loaded = ex ? isLoaded(ex) : false;
   const isHold = ex?.type === 'hold';
   const closes = CLOSE_EXERCISES.has(planned.exerciseId);
@@ -187,10 +190,19 @@ export function Player() {
       </Block>
 
       <main className="content" style={{ gap: 10 }}>
-        {ex && (
-          <section className="card" style={{ padding: '14px 18px' }}>
-            <p className="muted">{ex.cue}</p>
+        {ex && guide?.photos ? (
+          <section className="card" style={{ padding: 8, gap: 8 }}>
+            <ExercisePhotos photos={guide.photos} name={ex.name} compact />
+            <p className="muted small" style={{ padding: '0 8px 4px' }}>
+              {guide.do}. {guide.steps[guide.steps.length - 1]}
+            </p>
           </section>
+        ) : (
+          ex && (
+            <section className="card" style={{ padding: '14px 18px' }}>
+              <p className="muted">{ex.cue}</p>
+            </section>
+          )
         )}
 
         <ol className="card sets" aria-label="Sets">
