@@ -19,6 +19,16 @@ npm run preview    # serve dist/ (service worker / offline only active here)
 npm run icons      # regenerate the PNG app icons
 ```
 
+## CI/CD
+
+`.github/workflows/ci.yml` runs on every push and pull request: `npm ci`, unit tests, then
+typecheck + build. When a push to `main` passes, the built `dist/` is published to GitHub Pages at
+`https://<user>.github.io/<repo>/`. The build reads `BASE_PATH` for that subpath. It defaults to
+`/` locally, and the service worker and manifest work under either.
+
+One-time setup on GitHub: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+Dependabot (`.github/dependabot.yml`) opens monthly dependency-update PRs, and CI checks each one.
+
 ## What's in v0.1
 
 - **Onboarding**: safety disclaimer, equipment picker (12 types), goal, experience, days per week, plan preview.
