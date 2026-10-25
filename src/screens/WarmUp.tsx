@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { signal, useNow, useWakeLock } from '../components/hooks';
 import { Icon } from '../components/Icon';
+import { sfx } from '../components/sound';
 import { Block, Huge, RoundButton } from '../components/ui';
 import { nextDayIndex } from '../domain/generator';
 import { WARM_UP } from '../domain/goals';
@@ -26,6 +27,15 @@ export function WarmUp() {
     const nextStep = step + 1;
     setStep(nextStep);
     setEndAt(nextStep < WARM_UP.length ? Date.now() + WARM_UP[nextStep]!.seconds * 1000 : null);
+  }, [now, endAt, step]);
+
+  // Click on the last 3 seconds of each move; the chime marks the switch.
+  const lastBeat = useRef<string | null>(null);
+  useEffect(() => {
+    const left = endAt === null ? 0 : Math.ceil((endAt - now) / 1000);
+    const beat = left > 0 && left <= 3 ? `${step}-${left}` : null;
+    if (beat && beat !== lastBeat.current) sfx.lastTick();
+    lastBeat.current = beat;
   }, [now, endAt, step]);
 
   const startWorkout = () => begin(data.program ? nextDayIndex(data.program, data.sessions) : 0, 'replace');

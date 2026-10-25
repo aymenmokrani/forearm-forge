@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { setSoundEnabled } from './components/sound';
 import { ExerciseDetail } from './screens/ExerciseDetail';
 import { Ladder } from './screens/Ladder';
 import { Library } from './screens/Library';
@@ -44,6 +46,7 @@ function TabBar({ current }: { current: Tab }) {
 export function App() {
   const { data, saveFailed } = useStore();
   const { route } = useNav();
+  useEffect(() => setSoundEnabled(!data.soundOff), [data.soundOff]);
 
   if (!data.disclaimerAccepted || !data.profile || !data.program) return <Onboarding mode="first" />;
 

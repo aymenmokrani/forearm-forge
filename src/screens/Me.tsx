@@ -90,6 +90,29 @@ export function Me() {
           </div>
         </section>
 
+        <section className="card" style={{ padding: '10px 12px 10px 18px' }}>
+          <div className="row-between">
+            <div className="row-text">
+              <h2 className="card-title">Sounds</h2>
+              <span className="muted tiny">Timer ticks, set logged, records</span>
+            </div>
+            <div className="seg" role="radiogroup" aria-label="Sounds">
+              {([false, true] as const).map((off) => (
+                <button
+                  key={String(off)}
+                  type="button"
+                  role="radio"
+                  aria-checked={!!data.soundOff === off}
+                  className={!!data.soundOff === off ? 'seg-on' : ''}
+                  onClick={() => update((d) => ({ ...d, soundOff: off || undefined }))}
+                >
+                  {off ? 'Off' : 'On'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="card">
           <div className="row-text">
             <h2 className="card-title">Your data</h2>

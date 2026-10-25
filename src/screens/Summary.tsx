@@ -1,4 +1,5 @@
-import type { CSSProperties } from 'react';
+import { useEffect, useRef, type CSSProperties } from 'react';
+import { sfx } from '../components/sound';
 import { Block, Empty, Huge } from '../components/ui';
 import { getExercise } from '../domain/exercises';
 import { dayName } from '../domain/generator';
@@ -38,6 +39,15 @@ export function Summary({ id }: { id: string }) {
   const { data } = useStore();
   const nav = useNav();
   const session = data.sessions.find((s) => s.id === id);
+  const prs = session ? detectPRs(data.sessions, session) : [];
+
+  // One sound when the summary opens: a fanfare for a record, else a short finish.
+  const played = useRef(false);
+  useEffect(() => {
+    if (played.current || !session || session.endedForPain) return;
+    played.current = true;
+    (prs.length > 0 ? sfx.record : sfx.workoutDone)();
+  }, []);
 
   if (!session) {
     return (
@@ -53,7 +63,6 @@ export function Summary({ id }: { id: string }) {
     );
   }
 
-  const prs = detectPRs(data.sessions, session);
   const top = [...prs].sort((a, b) => ORDER[a.kind] - ORDER[b.kind])[0];
   const st = sessionStats(session);
   const streak = weeklyStreak(data.sessions, data.profile?.daysPerWeek ?? 3, new Date(session.finishedAt));

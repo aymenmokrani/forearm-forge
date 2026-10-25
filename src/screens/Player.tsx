@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { signal, useNow, useWakeLock } from '../components/hooks';
 import { Icon } from '../components/Icon';
+import { sfx } from '../components/sound';
 import { Bars, Block, Modal, RoundButton, Stepper } from '../components/ui';
 import { getExercise, isLoaded } from '../domain/exercises';
 import { SAFETY_FLAGS } from '../domain/goals';
@@ -65,8 +66,10 @@ export function Player() {
 
   const setActive = (fn: (a: ActiveSession) => ActiveSession) => update((d) => (d.active ? { ...d, active: fn(d.active) } : d));
 
-  const commit = (set: LoggedSet) => {
+  /** `quiet` when the timer chime already marks the moment. */
+  const commit = (set: LoggedSet, quiet = false) => {
     setActive((a) => logSet(a, i, set));
+    if (!quiet) sfx.setLogged();
     const finishesWorkout = isLastExercise && done.length + 1 >= planned.sets;
     if (!finishesWorkout && planned.restSec > 0) setRest({ endAt: Date.now() + planned.restSec * 1000, total: planned.restSec });
   };
@@ -77,20 +80,49 @@ export function Player() {
   });
 
   const logReps = () => commit({ reps: Math.max(0, Math.round(draft.reps ?? 0)), ...extras() });
-  const logHold = (seconds: number) => commit({ seconds: Math.max(0, Math.round(seconds)), ...extras() });
+  const logHold = (seconds: number, quiet = false) => commit({ seconds: Math.max(0, Math.round(seconds)), ...extras() }, quiet);
 
   // Timer completion is checked on each clock tick; clearing the timer state first prevents a second fire.
   useEffect(() => {
     if (hold && now - hold.startAt >= hold.target * 1000) {
       signal();
       setHold(null);
-      logHold(hold.target);
+      logHold(hold.target, true);
     }
     if (rest && now >= rest.endAt) {
       signal();
       setRest(null);
     }
   }, [now]);
+
+  // Ticks: every second of a hold, firmer for the 3-2-1 get-ready and the last 3 seconds.
+  // Rest stays quiet until its last 3 seconds. Each beat plays once.
+  const lastBeat = useRef<string | null>(null);
+  useEffect(() => {
+    let beat: string | null = null;
+    let firm = false;
+    if (hold) {
+      if (now < hold.startAt) {
+        beat = `ready${Math.ceil((hold.startAt - now) / 1000)}`;
+        firm = true;
+      } else {
+        const elapsed = Math.floor((now - hold.startAt) / 1000);
+        const left = hold.target - elapsed;
+        if (elapsed > 0 && left > 0) {
+          beat = `hold${elapsed}`;
+          firm = left <= 3;
+        }
+      }
+    } else if (rest) {
+      const left = Math.ceil((rest.endAt - now) / 1000);
+      if (left > 0 && left <= 3) {
+        beat = `rest${left}`;
+        firm = true;
+      }
+    }
+    if (beat && beat !== lastBeat.current) (firm ? sfx.lastTick : sfx.tick)();
+    lastBeat.current = beat;
+  }, [now, hold, rest]);
 
   const goTo = (idx: number) => {
     setSheet(null);
